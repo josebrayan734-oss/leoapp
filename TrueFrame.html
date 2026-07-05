@@ -19,6 +19,9 @@
 </head>
 <body>
   <h1>TrueFrame - Reportes y Configuración</h1>
+  <div class="row">
+    <button id="printReport" style="width:auto;display:none">Exportar a PDF</button>
+  </div>
   <div class="container">
     <div class="panel" id="reportsPanel">
       <h2>Reportes</h2>
@@ -116,10 +119,39 @@
       _log(text){ this.logEl.textContent = (new Date()).toLocaleTimeString() + ' - ' + text + '\n' + this.logEl.textContent; }
     }
 
+    function getStoredData() {
+      const products = JSON.parse(localStorage.getItem('leoapp-products') || '[]');
+      const clients = JSON.parse(localStorage.getItem('leoapp-clients') || '[]');
+      const sales = JSON.parse(localStorage.getItem('leoapp-sales') || '[]');
+      return { products, clients, sales };
+    }
+
+    function renderReport(data) {
+      const totalProducts = data.products.length;
+      const totalClients = data.clients.length;
+      const totalSales = data.sales.length;
+      const totalRevenue = data.sales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
+      document.getElementById('reportLog').innerHTML = `
+        <strong>Resumen</strong><br>
+        Productos: ${totalProducts}<br>
+        Clientes: ${totalClients}<br>
+        Ventas: ${totalSales}<br>
+        Ingresos: $${totalRevenue.toFixed(2)}
+      `;
+    }
+
     // Inicialización
     const connector = new MainFrameConnector(window.parent);
     const reportManager = new ReportManager(connector, document.getElementById('reportLog'));
     const configManager = new ConfigManager(connector, document.getElementById('configLog'));
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('pdf') === '1') {
+      document.getElementById('printReport').style.display = 'inline-block';
+      document.getElementById('printReport').addEventListener('click', () => window.print());
+    }
+
+    renderReport(getStoredData());
 
     document.getElementById('reportType').addEventListener('change', (e)=>{
       const type = e.target.value;
