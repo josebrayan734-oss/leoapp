@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="es">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1">
+	<title>Login - LeoApp</title>
+	<style>
+		body{font-family:Arial,Helvetica,sans-serif;background:#f4f6f8;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}
+		.card{background:#fff;padding:24px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.08);width:340px}
+		.card h2{margin:0 0 12px;font-size:20px}
+		.field{margin-bottom:12px}
+		label{display:block;font-size:13px;margin-bottom:6px}
+		input[type=text],input[type=password]{width:100%;padding:10px;border:1px solid #d1d7de;border-radius:4px}
+		.buttons{display:flex;gap:8px;margin-top:12px}
+		button{flex:1;padding:10px;border-radius:4px;border:0;cursor:pointer}
+		button.primary{background:#1976d2;color:#fff}
+		button.secondary{background:#e0e6ea}
+		.error{color:#b00020;font-size:13px;margin-top:8px;display:none}
+	</style>
+</head>
+<body>
+	<div class="card" role="main">
+		<h2>Iniciar sesión</h2>
+		<form id="loginForm" onsubmit="return onSubmit(event)">
+			<div class="field">
+				<label for="user">Usuario</label>
+				<input id="user" name="user" type="text" autocomplete="username">
+			</div>
+			<div class="field">
+				<label for="pass">Contraseña</label>
+				<input id="pass" name="pass" type="password" autocomplete="current-password">
+			</div>
+			<div class="buttons">
+				<button type="submit" class="primary">Entrar</button>
+				<button type="button" class="secondary" onclick="onCancel()">Cancelar</button>
+			</div>
+			<div id="error" class="error">Usuario y contraseña requeridos.</div>
+		</form>
+	</div>
+
+	<script>
+		function onSubmit(e){
+			e.preventDefault();
+			const user = document.getElementById('user').value.trim();
+			const pass = document.getElementById('pass').value.trim();
+			const err = document.getElementById('error');
+
+			if(!user || !pass){
+				err.textContent = 'Usuario y contraseña requeridos.';
+				err.style.display='block';
+				return false;
+			}
+
+			err.style.display='none';
+
+			if(user === 'admin' && pass === '1234'){
+				window.location.href = 'MainFrame.html';
+				return false;
+			}
+
+
+			err.textContent = 'Usuario o contraseña incorrectos.';
+			err.style.display='block';
+			document.getElementById('pass').value='';
+			return false;
+		}
+		function onCancel(){
+			document.getElementById('loginForm').reset();
+			document.getElementById('error').style.display='none';
+		}
+	</script>
+</body>
+</html>

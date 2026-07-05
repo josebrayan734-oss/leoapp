@@ -1,0 +1,803 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Granja El Pollon - Main Frame</title>
+  <style>
+    body{font-family: Arial, Helvetica, sans-serif;margin:16px;background:#f5f7fb}
+    header{margin-bottom:16px}
+    .container{display:flex;gap:16px;flex-wrap:wrap}
+    .panel{flex:1;min-width:300px;border:1px solid #ddd;padding:12px;border-radius:8px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+    h2{margin-top:0}
+    .list{max-height:420px;overflow:auto}
+    .product-form{display:grid;gap:10px;margin-bottom:12px}
+    .field-row{display:grid;gap:10px;grid-template-columns:repeat(2, minmax(0, 1fr))}
+    label{display:flex;flex-direction:column;font-size:13px;gap:4px}
+    input{padding:8px;border:1px solid #cfd8e3;border-radius:4px}
+    .actions{display:flex;gap:8px;flex-wrap:wrap}
+    .btn{padding:8px 12px;border:none;border-radius:4px;cursor:pointer}
+    .btn-primary{background:#1976d2;color:#fff}
+    .btn-secondary{background:#e3e8ef}
+    .btn-danger{background:#d32f2f;color:#fff}
+    table{width:100%;border-collapse:collapse;font-size:14px}
+    th,td{padding:8px;border-bottom:1px solid #e5e7eb;text-align:left}
+    th{background:#f8fafc}
+    .product-actions button{margin-right:6px}
+    .empty{color:#666;font-style:italic}
+    .sales-form{display:grid;gap:10px;margin-bottom:12px}
+    .sales-panel-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+    select{padding:8px;border:1px solid #cfd8e3;border-radius:4px}
+    .cart-box{border:1px solid #e5e7eb;border-radius:6px;padding:10px;margin-bottom:12px;background:#fafbfc}
+    .cart-item{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #eee}
+    .cart-item:last-child{border-bottom:0}
+    .cart-summary{font-weight:bold;margin-top:8px}
+    .sales-modal{position:fixed;inset:0;background:rgba(15,23,42,.5);display:none;align-items:center;justify-content:center;padding:16px;z-index:1000}
+    .sales-modal.open{display:flex}
+    .sales-modal-card{background:#fff;width:min(760px,100%);max-height:80vh;overflow:auto;border-radius:8px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.2)}
+    .sales-modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Granja El Pollon - Panel Principal</h1>
+    <p>Gestiona productos, clientes y ventas desde aquí.</p>
+  </header>
+
+  <div class="container">
+    <section id="productos" class="panel">
+      <h2>Productos</h2>
+      <form id="product-form" class="product-form">
+        <input type="hidden" id="product-id">
+        <div class="field-row">
+          <label>Nombre
+            <input id="product-name" name="name" required>
+          </label>
+          <label>Precio
+            <input id="product-price" name="price" type="number" min="0" step="0.01" required>
+          </label>
+        </div>
+        <div class="field-row">
+          <label>Categoría
+            <input id="product-category" name="category">
+          </label>
+          <label>Stock
+            <input id="product-stock" name="stock" type="number" min="0" step="1" required>
+          </label>
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn btn-primary">Guardar producto</button>
+          <button type="button" id="cancel-product" class="btn btn-secondary">Cancelar</button>
+        </div>
+      </form>
+      <div id="productos-list" class="list"></div>
+    </section>
+
+    <section id="clientes" class="panel">
+      <h2>Clientes</h2>
+      <form id="client-form" class="product-form">
+        <input type="hidden" id="client-id">
+        <div class="field-row">
+          <label>Nombre
+            <input id="client-name" name="name" required>
+          </label>
+          <label>Teléfono
+            <input id="client-phone" name="phone">
+          </label>
+        </div>
+        <div class="field-row">
+          <label>Correo
+            <input id="client-email" name="email" type="email">
+          </label>
+          <label>Dirección
+            <input id="client-address" name="address">
+          </label>
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn btn-primary">Guardar cliente</button>
+          <button type="button" id="cancel-client" class="btn btn-secondary">Cancelar</button>
+        </div>
+      </form>
+      <div id="clientes-list" class="list"></div>
+    </section>
+
+    <section id="ventas" class="panel">
+      <div class="sales-panel-head">
+        <h2>Ventas</h2>
+        <button type="button" id="history-toggle" class="btn btn-secondary">Historial de ventas</button>
+      </div>
+      <form id="sale-form" class="sales-form">
+        <label>Cliente
+          <select id="sale-client" required></select>
+        </label>
+        <div class="field-row">
+          <label>Producto
+            <select id="sale-product" required></select>
+          </label>
+          <label>Cantidad
+            <input id="sale-quantity" type="number" min="1" value="1" required>
+          </label>
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn btn-primary">Agregar al carrito</button>
+          <button type="button" id="clear-cart" class="btn btn-secondary">Vaciar carrito</button>
+        </div>
+      </form>
+      <div id="sale-cart" class="cart-box"></div>
+      <div class="actions">
+        <button type="button" id="finalize-sale" class="btn btn-primary">Registrar venta</button>
+      </div>
+      <div id="ventas-list" class="list"></div>
+
+      <div id="sales-history-modal" class="sales-modal" aria-hidden="true">
+        <div class="sales-modal-card">
+          <div class="sales-modal-header">
+            <h3>Historial de ventas</h3>
+            <button type="button" id="close-history" class="btn btn-secondary">Cerrar</button>
+          </div>
+          <div id="sales-history-list"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    class Products {
+      constructor() {
+        this.storageKey = 'leoapp-products';
+        this.items = this.loadProducts();
+        this.form = document.getElementById('product-form');
+        this.idInput = document.getElementById('product-id');
+        this.nameInput = document.getElementById('product-name');
+        this.priceInput = document.getElementById('product-price');
+        this.categoryInput = document.getElementById('product-category');
+        this.stockInput = document.getElementById('product-stock');
+        this.listContainer = document.getElementById('productos-list');
+        this.cancelButton = document.getElementById('cancel-product');
+        this.bindEvents();
+        this.render();
+      }
+
+      loadProducts() {
+        try {
+          const data = JSON.parse(localStorage.getItem(this.storageKey));
+          return Array.isArray(data) && data.length ? data : this.getDefaultProducts();
+        } catch (e) {
+          return this.getDefaultProducts();
+        }
+      }
+
+      getDefaultProducts() {
+        return [
+          { id: 1, name: 'Laptop', price: 1200, category: 'Tecnología', stock: 5 },
+          { id: 2, name: 'Mouse', price: 25, category: 'Accesorios', stock: 20 },
+          { id: 3, name: 'Teclado', price: 45, category: 'Accesorios', stock: 12 }
+        ];
+      }
+
+      saveProducts() {
+        localStorage.setItem(this.storageKey, JSON.stringify(this.items));
+      }
+
+      getAll() {
+        return this.items;
+      }
+
+      add(product) {
+        const newProduct = { id: Date.now(), ...product };
+        this.items.unshift(newProduct);
+        this.saveProducts();
+        this.render();
+        return newProduct;
+      }
+
+      update(id, product) {
+        this.items = this.items.map(item => item.id === id ? { ...item, ...product } : item);
+        this.saveProducts();
+        this.render();
+      }
+
+      delete(id) {
+        this.items = this.items.filter(item => item.id !== id);
+        this.saveProducts();
+        this.render();
+      }
+
+      bindEvents() {
+        this.form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const id = Number(this.idInput.value);
+          const product = {
+            name: this.nameInput.value.trim(),
+            price: Number(this.priceInput.value),
+            category: this.categoryInput.value.trim(),
+            stock: Number(this.stockInput.value)
+          };
+
+          if (!product.name || !product.price || !product.stock) {
+            alert('Completa los campos obligatorios');
+            return;
+          }
+
+          if (id) {
+            this.update(id, product);
+          } else {
+            this.add(product);
+          }
+          this.resetForm();
+        });
+
+        this.cancelButton.addEventListener('click', () => this.resetForm());
+
+        this.listContainer.addEventListener('click', (e) => {
+          const button = e.target.closest('button');
+          if (!button) return;
+
+          const id = Number(button.dataset.id);
+          if (button.classList.contains('edit')) {
+            const item = this.items.find(prod => prod.id === id);
+            if (item) this.fillForm(item);
+          }
+
+          if (button.classList.contains('delete')) {
+            const item = this.items.find(prod => prod.id === id);
+            if (item && confirm(`¿Eliminar el producto ${item.name}?`)) {
+              this.delete(id);
+            }
+          }
+        });
+      }
+
+      fillForm(product) {
+        this.idInput.value = product.id;
+        this.nameInput.value = product.name;
+        this.priceInput.value = product.price;
+        this.categoryInput.value = product.category || '';
+        this.stockInput.value = product.stock;
+        this.nameInput.focus();
+      }
+
+      resetForm() {
+        this.form.reset();
+        this.idInput.value = '';
+      }
+
+      render() {
+        this.listContainer.innerHTML = '';
+
+        if (!this.items.length) {
+          this.listContainer.innerHTML = '<div class="empty">No hay productos registrados.</div>';
+          return;
+        }
+
+        const table = document.createElement('table');
+        table.innerHTML = `
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Precio</th>
+              <th>Categoría</th>
+              <th>Stock</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        `;
+
+        const tbody = table.querySelector('tbody');
+        this.items.forEach(item => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${item.name}</td>
+            <td>$${Number(item.price).toFixed(2)}</td>
+            <td>${item.category || '-'}</td>
+            <td>${item.stock}</td>
+            <td class="product-actions">
+              <button type="button" class="btn btn-secondary edit" data-id="${item.id}">Editar</button>
+              <button type="button" class="btn btn-danger delete" data-id="${item.id}">Eliminar</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        this.listContainer.appendChild(table);
+      }
+    }
+
+    class Clients {
+      constructor() {
+        this.storageKey = 'leoapp-clients';
+        this.items = this.loadClients();
+        this.form = document.getElementById('client-form');
+        this.idInput = document.getElementById('client-id');
+        this.nameInput = document.getElementById('client-name');
+        this.phoneInput = document.getElementById('client-phone');
+        this.emailInput = document.getElementById('client-email');
+        this.addressInput = document.getElementById('client-address');
+        this.listContainer = document.getElementById('clientes-list');
+        this.cancelButton = document.getElementById('cancel-client');
+        this.bindEvents();
+        this.render();
+      }
+
+      loadClients() {
+        try {
+          const data = JSON.parse(localStorage.getItem(this.storageKey));
+          return Array.isArray(data) && data.length ? data : this.getDefaultClients();
+        } catch (e) {
+          return this.getDefaultClients();
+        }
+      }
+
+      getDefaultClients() {
+        return [
+          { id: 1, name: 'Juan Pérez', phone: '555-0101', email: 'juan@mail.com', address: 'Calle 1' },
+          { id: 2, name: 'María López', phone: '555-0102', email: 'maria@mail.com', address: 'Calle 2' }
+        ];
+      }
+
+      saveClients() {
+        localStorage.setItem(this.storageKey, JSON.stringify(this.items));
+      }
+
+      getAll() {
+        return this.items;
+      }
+
+      add(client) {
+        const newClient = { id: Date.now(), ...client };
+        this.items.unshift(newClient);
+        this.saveClients();
+        this.render();
+        return newClient;
+      }
+
+      update(id, client) {
+        this.items = this.items.map(item => item.id === id ? { ...item, ...client } : item);
+        this.saveClients();
+        this.render();
+      }
+
+      delete(id) {
+        this.items = this.items.filter(item => item.id !== id);
+        this.saveClients();
+        this.render();
+      }
+
+      bindEvents() {
+        this.form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const id = Number(this.idInput.value);
+          const client = {
+            name: this.nameInput.value.trim(),
+            phone: this.phoneInput.value.trim(),
+            email: this.emailInput.value.trim(),
+            address: this.addressInput.value.trim()
+          };
+
+          if (!client.name) {
+            alert('El nombre del cliente es obligatorio');
+            return;
+          }
+
+          if (id) {
+            this.update(id, client);
+          } else {
+            this.add(client);
+          }
+          this.resetForm();
+        });
+
+        this.cancelButton.addEventListener('click', () => this.resetForm());
+
+        this.listContainer.addEventListener('click', (e) => {
+          const button = e.target.closest('button');
+          if (!button) return;
+
+          const id = Number(button.dataset.id);
+          if (button.classList.contains('edit')) {
+            const item = this.items.find(client => client.id === id);
+            if (item) this.fillForm(item);
+          }
+
+          if (button.classList.contains('delete')) {
+            const item = this.items.find(client => client.id === id);
+            if (item && confirm(`¿Eliminar al cliente ${item.name}?`)) {
+              this.delete(id);
+            }
+          }
+        });
+      }
+
+      fillForm(client) {
+        this.idInput.value = client.id;
+        this.nameInput.value = client.name;
+        this.phoneInput.value = client.phone || '';
+        this.emailInput.value = client.email || '';
+        this.addressInput.value = client.address || '';
+        this.nameInput.focus();
+      }
+
+      resetForm() {
+        this.form.reset();
+        this.idInput.value = '';
+      }
+
+      render() {
+        this.listContainer.innerHTML = '';
+
+        if (!this.items.length) {
+          this.listContainer.innerHTML = '<div class="empty">No hay clientes registrados.</div>';
+          return;
+        }
+
+        const table = document.createElement('table');
+        table.innerHTML = `
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Teléfono</th>
+              <th>Correo</th>
+              <th>Dirección</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        `;
+
+        const tbody = table.querySelector('tbody');
+        this.items.forEach(item => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${item.name}</td>
+            <td>${item.phone || '-'}</td>
+            <td>${item.email || '-'}</td>
+            <td>${item.address || '-'}</td>
+            <td class="product-actions">
+              <button type="button" class="btn btn-secondary edit" data-id="${item.id}">Editar</button>
+              <button type="button" class="btn btn-danger delete" data-id="${item.id}">Eliminar</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        this.listContainer.appendChild(table);
+      }
+    }
+
+    class Sales {
+      constructor() {
+        this.storageKey = 'leoapp-sales';
+        this.items = this.loadSales();
+        this.form = document.getElementById('sale-form');
+        this.clientSelect = document.getElementById('sale-client');
+        this.productSelect = document.getElementById('sale-product');
+        this.quantityInput = document.getElementById('sale-quantity');
+        this.cartContainer = document.getElementById('sale-cart');
+        this.listContainer = document.getElementById('ventas-list');
+        this.clearCartButton = document.getElementById('clear-cart');
+        this.finalizeButton = document.getElementById('finalize-sale');
+        this.historyToggle = document.getElementById('history-toggle');
+        this.modal = document.getElementById('sales-history-modal');
+        this.historyList = document.getElementById('sales-history-list');
+        this.closeButton = document.getElementById('close-history');
+        this.cart = [];
+        this.bindEvents();
+        this.refreshOptions();
+        this.renderCart();
+        this.render();
+      }
+
+      loadSales() {
+        try {
+          const data = JSON.parse(localStorage.getItem(this.storageKey));
+          return Array.isArray(data) ? data : [];
+        } catch (e) {
+          return [];
+        }
+      }
+
+      saveSales() {
+        localStorage.setItem(this.storageKey, JSON.stringify(this.items));
+      }
+
+      getAll() {
+        return this.items;
+      }
+
+      getProducts() {
+        return window.productManager ? window.productManager.items : [];
+      }
+
+      getClients() {
+        return window.clientManager ? window.clientManager.items : [];
+      }
+
+      refreshOptions() {
+        const products = this.getProducts();
+        const clients = this.getClients();
+
+        this.productSelect.innerHTML = '';
+        this.clientSelect.innerHTML = '';
+
+        if (!products.length || !clients.length) {
+          this.productSelect.innerHTML = '<option value="">No hay productos</option>';
+          this.clientSelect.innerHTML = '<option value="">No hay clientes</option>';
+          return;
+        }
+
+        clients.forEach(client => {
+          const option = document.createElement('option');
+          option.value = client.id;
+          option.textContent = client.name;
+          this.clientSelect.appendChild(option);
+        });
+
+        products.forEach(product => {
+          const option = document.createElement('option');
+          option.value = product.id;
+          option.textContent = `${product.name} - $${Number(product.price).toFixed(2)} (Stock: ${product.stock})`;
+          this.productSelect.appendChild(option);
+        });
+      }
+
+      addToCart(sale) {
+        const products = this.getProducts();
+        const product = products.find(item => item.id === sale.productId);
+        const clients = this.getClients();
+        const client = clients.find(item => item.id === sale.clientId);
+
+        if (!product || !client) {
+          alert('Debe seleccionar un cliente y un producto válidos');
+          return;
+        }
+
+        const existingItem = this.cart.find(item => item.productId === product.id);
+        const totalRequested = (existingItem ? existingItem.quantity : 0) + sale.quantity;
+
+        if (product.stock < totalRequested) {
+          alert('No hay suficiente stock para agregar esa cantidad');
+          return;
+        }
+
+        if (existingItem) {
+          existingItem.quantity += sale.quantity;
+          existingItem.subtotal = existingItem.quantity * product.price;
+        } else {
+          this.cart.push({
+            productId: product.id,
+            productName: product.name,
+            price: Number(product.price),
+            quantity: sale.quantity,
+            subtotal: Number(product.price) * sale.quantity
+          });
+        }
+
+        this.renderCart();
+      }
+
+      removeFromCart(productId) {
+        this.cart = this.cart.filter(item => item.productId !== productId);
+        this.renderCart();
+      }
+
+      clearCart() {
+        this.cart = [];
+        this.renderCart();
+      }
+
+      finalizeSale() {
+        if (!this.cart.length) {
+          alert('Agrega productos al carrito antes de registrar la venta');
+          return;
+        }
+
+        const clientId = Number(this.clientSelect.value);
+        const client = this.getClients().find(item => item.id === clientId);
+        if (!client) {
+          alert('Debe seleccionar un cliente válido');
+          return;
+        }
+
+        const products = this.getProducts();
+        const insufficient = this.cart.some(item => {
+          const product = products.find(prod => prod.id === item.productId);
+          return !product || product.stock < item.quantity;
+        });
+
+        if (insufficient) {
+          alert('Algunos productos no tienen stock suficiente para completar la venta');
+          return;
+        }
+
+        this.cart.forEach(item => {
+          const product = products.find(prod => prod.id === item.productId);
+          if (product) {
+            const productIndex = window.productManager.items.findIndex(prod => prod.id === product.id);
+            if (productIndex >= 0) {
+              window.productManager.items[productIndex] = { ...product, stock: product.stock - item.quantity };
+            }
+          }
+        });
+
+        window.productManager.saveProducts();
+        window.productManager.render();
+
+        const newSale = {
+          id: Date.now(),
+          clientId: client.id,
+          clientName: client.name,
+          items: this.cart.map(item => ({ ...item })),
+          total: this.cart.reduce((sum, item) => sum + item.subtotal, 0),
+          date: new Date().toLocaleString()
+        };
+
+        this.items.unshift(newSale);
+        this.saveSales();
+        this.clearCart();
+        this.refreshOptions();
+        this.render();
+        this.renderHistory();
+        window.setTimeout(() => this.showHistory(), 80);
+      }
+
+      bindEvents() {
+        this.form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const sale = {
+            clientId: Number(this.clientSelect.value),
+            productId: Number(this.productSelect.value),
+            quantity: Number(this.quantityInput.value)
+          };
+
+          if (!sale.clientId || !sale.productId || !sale.quantity) {
+            alert('Completa todos los campos para agregar al carrito');
+            return;
+          }
+
+          this.addToCart(sale);
+          this.form.reset();
+          this.quantityInput.value = '1';
+        });
+
+        this.clearCartButton.addEventListener('click', () => this.clearCart());
+        this.finalizeButton.addEventListener('click', () => this.finalizeSale());
+        this.historyToggle.addEventListener('click', () => this.showHistory());
+        this.closeButton.addEventListener('click', () => this.closeHistory());
+        this.modal.addEventListener('click', (e) => {
+          if (e.target === this.modal) this.closeHistory();
+        });
+
+        this.cartContainer.addEventListener('click', (e) => {
+          const button = e.target.closest('button');
+          if (!button) return;
+          this.removeFromCart(Number(button.dataset.id));
+        });
+      }
+
+      showHistory() {
+        this.modal.classList.add('open');
+        this.modal.setAttribute('aria-hidden', 'false');
+        this.renderHistory();
+      }
+
+      closeHistory() {
+        this.modal.classList.remove('open');
+        this.modal.setAttribute('aria-hidden', 'true');
+      }
+
+      getSaleItemsText(sale) {
+        if (Array.isArray(sale.items) && sale.items.length) {
+          return sale.items.map(entry => `${entry.productName} x${entry.quantity}`).join(', ');
+        }
+        if (sale.productName) {
+          return `${sale.productName} x${sale.quantity || 1}`;
+        }
+        return 'Sin productos';
+      }
+
+      renderCart() {
+        this.cartContainer.innerHTML = '';
+        if (!this.cart.length) {
+          this.cartContainer.innerHTML = '<div class="empty">El carrito está vacío.</div>';
+          return;
+        }
+
+        const summary = document.createElement('div');
+        summary.className = 'cart-summary';
+        summary.textContent = `Total: $${this.cart.reduce((sum, item) => sum + item.subtotal, 0).toFixed(2)}`;
+        this.cartContainer.appendChild(summary);
+
+        this.cart.forEach(item => {
+          const row = document.createElement('div');
+          row.className = 'cart-item';
+          row.innerHTML = `
+            <span>${item.productName} x${item.quantity} — $${item.subtotal.toFixed(2)}</span>
+            <button type="button" class="btn btn-danger" data-id="${item.productId}">Quitar</button>
+          `;
+          this.cartContainer.appendChild(row);
+        });
+      }
+
+      renderHistory() {
+        this.historyList.innerHTML = '';
+
+        if (!this.items.length) {
+          this.historyList.innerHTML = '<div class="empty">No hay ventas registradas.</div>';
+          return;
+        }
+
+        const table = document.createElement('table');
+        table.innerHTML = `
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Productos</th>
+              <th>Total</th>
+              <th>Fecha</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        `;
+
+        const tbody = table.querySelector('tbody');
+        this.items.forEach(item => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${item.clientName}</td>
+            <td>${this.getSaleItemsText(item)}</td>
+            <td>$${Number(item.total).toFixed(2)}</td>
+            <td>${item.date}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        this.historyList.appendChild(table);
+      }
+
+      render() {
+        this.listContainer.innerHTML = '';
+
+        if (!this.items.length) {
+          this.listContainer.innerHTML = '<div class="empty">No hay ventas registradas.</div>';
+          return;
+        }
+
+        const table = document.createElement('table');
+        table.innerHTML = `
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Productos</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        `;
+
+        const tbody = table.querySelector('tbody');
+        this.items.forEach(item => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${item.clientName}</td>
+            <td>${this.getSaleItemsText(item)}</td>
+            <td>$${Number(item.total).toFixed(2)}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        this.listContainer.appendChild(table);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      window.Products = Products;
+      window.Clients = Clients;
+      window.productManager = new Products();
+      window.clientManager = new Clients();
+      window.Sales = Sales;
+      new Sales();
+    });
+  </script>
+</body>
+</html>

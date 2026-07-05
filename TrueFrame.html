@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>TrueFrame - Reportes y Configuración</title>
+  <style>
+    body{font-family:Segoe UI,Arial;background:#f4f6f8;padding:20px}
+    .container{display:flex;gap:20px}
+    .panel{background:#fff;border:1px solid #ddd;border-radius:6px;padding:16px;flex:1;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+    h2{margin:0 0 12px 0;font-size:18px}
+    .row{margin-bottom:10px}
+    label{display:block;font-size:13px;margin-bottom:4px}
+    select,input,button{padding:8px;border:1px solid #cfcfcf;border-radius:4px;width:100%}
+    button{cursor:pointer;background:#2b78e4;color:#fff;border:none}
+    .small{display:flex;gap:8px}
+    .log{margin-top:12px;padding:8px;background:#f9fafb;border-radius:4px;height:160px;overflow:auto;font-size:13px}
+  </style>
+</head>
+<body>
+  <h1>TrueFrame - Reportes y Configuración</h1>
+  <div class="container">
+    <div class="panel" id="reportsPanel">
+      <h2>Reportes</h2>
+      <div class="row">
+        <label for="reportType">Tipo de reporte</label>
+        <select id="reportType">
+          <option value="sales_by_day">Ventas por días</option>
+          <option value="sales_by_product">Ventas por producto</option>
+          <option value="general">Reporte general</option>
+        </select>
+      </div>
+      <div class="row" id="dateRangeRow">
+        <label>Rango de fechas</label>
+        <div class="small">
+          <input type="date" id="fromDate">
+          <input type="date" id="toDate">
+        </div>
+      </div>
+      <div class="row">
+        <button id="generateReport">Generar reporte</button>
+      </div>
+      <div class="log" id="reportLog">Eventos de reporte...</div>
+    </div>
+
+    <div class="panel" id="configPanel">
+      <h2>Configuración</h2>
+      <div class="row">
+        <label for="cfgUsers">Usuarios (JSON) </label>
+        <input id="cfgUsers" placeholder='[{"id":1,"name":"Admin"}]'>
+      </div>
+      <div class="row">
+        <label for="cfgCategories">Categorías (JSON)</label>
+        <input id="cfgCategories" placeholder='[{"id":1,"name":"Bebidas"}]'>
+      </div>
+      <div class="row">
+        <label for="cfgParams">Parámetros (JSON)</label>
+        <input id="cfgParams" placeholder='{"currency":"EUR","tax":0.21}'>
+      </div>
+      <div class="row">
+        <button id="saveConfig">Guardar configuración</button>
+      </div>
+      <div class="log" id="configLog">Eventos de configuración...</div>
+    </div>
+  </div>
+
+  <script>
+    // Clase que actúa como puente con MainFrame.html usando postMessage
+    class MainFrameConnector {
+      constructor(targetWindow = window.parent) {
+        this.target = targetWindow;
+        this.origin = '*'; // ajustar si conoce el origen exacto
+        window.addEventListener('message', this._onMessage.bind(this));
+        this._callbacks = {};
+        this._id = 1;
+      }
+
+      _onMessage(evt){
+        const msg = evt.data;
+        if(!msg || !msg.__tf_id) return;
+        const cb = this._callbacks[msg.__tf_id];
+        if(cb) cb(msg.payload);
+      }
+
+      send(action, payload){
+        return new Promise((resolve)=>{
+          const id = (this._id++).toString();
+          this._callbacks[id] = (resp)=>{ delete this._callbacks[id]; resolve(resp); };
+          this.target.postMessage({ __tf_id: id, action, payload }, this.origin);
+        });
+      }
+    }
+
+    // Lógica para generar reportes usando el conector
+    class ReportManager {
+      constructor(connector, logEl){ this.conn = connector; this.logEl = logEl; }
+      async generate(type, from, to){
+        this._log('Solicitando reporte: '+type);
+        const payload = { type, from, to };
+        const resp = await this.conn.send('generate_report', payload);
+        this._log('Respuesta: ' + JSON.stringify(resp));
+        return resp;
+      }
+      _log(text){ this.logEl.textContent = (new Date()).toLocaleTimeString() + ' - ' + text + '\n' + this.logEl.textContent; }
+    }
+
+    // Lógica para configuración (usuarios, categorías, parámetros)
+    class ConfigManager {
+      constructor(connector, logEl){ this.conn = connector; this.logEl = logEl; }
+      async save(config){
+        this._log('Guardando configuración');
+        const resp = await this.conn.send('save_config', config);
+        this._log('Respuesta: '+JSON.stringify(resp));
+        return resp;
+      }
+      _log(text){ this.logEl.textContent = (new Date()).toLocaleTimeString() + ' - ' + text + '\n' + this.logEl.textContent; }
+    }
+
+    // Inicialización
+    const connector = new MainFrameConnector(window.parent);
+    const reportManager = new ReportManager(connector, document.getElementById('reportLog'));
+    const configManager = new ConfigManager(connector, document.getElementById('configLog'));
+
+    document.getElementById('reportType').addEventListener('change', (e)=>{
+      const type = e.target.value;
+      document.getElementById('dateRangeRow').style.display = (type === 'general') ? 'none' : 'block';
+    });
+
+    document.getElementById('generateReport').addEventListener('click', async ()=>{
+      const type = document.getElementById('reportType').value;
+      const from = document.getElementById('fromDate').value || null;
+      const to = document.getElementById('toDate').value || null;
+      await reportManager.generate(type, from, to);
+    });
+
+    document.getElementById('saveConfig').addEventListener('click', async ()=>{
+      try{
+        const users = JSON.parse(document.getElementById('cfgUsers').value || '[]');
+        const categories = JSON.parse(document.getElementById('cfgCategories').value || '[]');
+        const params = JSON.parse(document.getElementById('cfgParams').value || '{}');
+        await configManager.save({ users, categories, params });
+      }catch(err){
+        document.getElementById('configLog').textContent = 'Error JSON: '+err.message;
+      }
+    });
+
+    // Mensajes de ejemplo que MainFrame.html debería manejar:
+    // { action: 'generate_report', payload: {type, from, to} }
+    // { action: 'save_config', payload: {...} }
+
+  </script>
+</body>
+</html>
