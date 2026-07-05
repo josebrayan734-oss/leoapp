@@ -39,6 +39,15 @@
 	</div>
 
 	<script>
+		function getUsers(){
+			try{
+				const saved = JSON.parse(localStorage.getItem('leoapp-users') || '[]');
+				return Array.isArray(saved) && saved.length ? saved : [{ id: 1, username: 'admin', password: '1234' }];
+			}catch(e){
+				return [{ id: 1, username: 'admin', password: '1234' }];
+			}
+		}
+
 		function onSubmit(e){
 			e.preventDefault();
 			const user = document.getElementById('user').value.trim();
@@ -53,11 +62,13 @@
 
 			err.style.display='none';
 
-			if(user === 'admin' && pass === '1234'){
+			const users = getUsers();
+			const valid = users.some(item => item.username === user && item.password === pass);
+
+			if(valid){
 				window.location.href = 'MainFrame.html';
 				return false;
 			}
-
 
 			err.textContent = 'Usuario o contraseña incorrectos.';
 			err.style.display='block';
